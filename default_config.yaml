@@ -1,0 +1,22 @@
+# Codex Provider - Default Configuration
+
+# Authentication mode: "api_key" or "oauth"
+auth_mode: "api_key"
+
+# For api_key mode: your OpenAI API key
+api_key: ""
+
+# For oauth mode: tokens are managed automatically via the dashboard
+oauth_access_token: ""
+oauth_refresh_token: ""
+
+# Local proxy port (runs inside the container)
+proxy_port: 8400
+
+# Auto-configure Agent Zero to use this proxy on startup
+auto_configure: false
+
+# Default models (verified working with ChatGPT subscription)
+chat_model: "gpt-5.3-codex"
+util_model: "gpt-5.1-codex-mini"
+browser_model: "gpt-5.1-codex-mini"

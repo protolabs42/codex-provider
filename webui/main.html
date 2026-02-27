@@ -1,0 +1,242 @@
+<html>
+<head>
+    <title>Codex Provider</title>
+    <script type="module" src="/plugins/codex-provider/webui/codex-store.js"></script>
+    <style>
+        .cdx { font-family: system-ui, -apple-system, sans-serif; color: inherit; }
+        .cdx-card { background: color-mix(in srgb, currentColor 8%, transparent); border: 1px solid color-mix(in srgb, currentColor 12%, transparent); border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+        .cdx-btn { padding: 8px 18px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.85em; font-weight: 500; transition: all 0.15s; color: inherit; }
+        .cdx-btn:hover { filter: brightness(1.1); }
+        .cdx-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .cdx-btn-primary { background: #10a37f; color: white; }
+        .cdx-btn-secondary { background: color-mix(in srgb, currentColor 10%, transparent); border: 1px solid color-mix(in srgb, currentColor 15%, transparent); }
+        .cdx-btn-danger { background: transparent; color: #e53e3e; border: 1px solid #e53e3e33; }
+        .cdx-btn-lg { padding: 14px 28px; font-size: 1em; border-radius: 12px; }
+        .cdx-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .cdx-dot-green { background: #22c55e; box-shadow: 0 0 6px #22c55e66; }
+        .cdx-dot-red { background: #ef4444; }
+        .cdx-dot-yellow { background: #eab308; animation: pulse 2s infinite; }
+        .cdx-code { font-family: 'SF Mono', 'Fira Code', monospace; background: color-mix(in srgb, currentColor 6%, transparent); padding: 16px 24px; border-radius: 10px; font-size: 1.8em; letter-spacing: 0.15em; text-align: center; color: #10a37f; font-weight: 700; user-select: all; cursor: pointer; border: 2px dashed #10a37f44; }
+        .cdx-select { width: 100%; padding: 6px 10px; border-radius: 6px; background: color-mix(in srgb, currentColor 6%, transparent); border: 1px solid color-mix(in srgb, currentColor 15%, transparent); color: inherit; font-size: 0.85em; }
+        .cdx-msg { padding: 10px 14px; border-radius: 8px; font-size: 0.85em; margin-top: 12px; }
+        .cdx-msg-success { background: #22c55e18; border: 1px solid #22c55e33; color: #16a34a; }
+        .cdx-msg-error { background: #ef444418; border: 1px solid #ef444433; color: #dc2626; }
+        .cdx-msg-info { background: #3b82f618; border: 1px solid #3b82f633; color: #2563eb; }
+        .cdx-fade-in { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    </style>
+</head>
+<body>
+    <div x-data class="cdx">
+        <template x-if="$store.codexProvider">
+            <div x-init="$store.codexProvider.onOpen()" x-destroy="$store.codexProvider.cleanup()">
+
+                <!-- Header -->
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;">
+                        <rect width="24" height="24" rx="6" fill="#10a37f"/>
+                        <path d="M12 6L7 9.5V14.5L12 18L17 14.5V9.5L12 6Z" stroke="white" stroke-width="1.5" fill="none"/>
+                        <circle cx="12" cy="12" r="2" fill="white"/>
+                    </svg>
+                    <div>
+                        <h2 style="margin:0; font-size:1.1em;">Codex Provider</h2>
+                        <p style="margin:0; font-size:0.75em; opacity:0.5;">Connect your ChatGPT subscription to Agent Zero</p>
+                    </div>
+                </div>
+
+                <!-- ═══ NOT CONNECTED STATE ═══ -->
+                <template x-if="!$store.codexProvider.connected && !$store.codexProvider.pairing">
+                    <div class="cdx-fade-in">
+                        <div class="cdx-card" style="text-align:center; padding:28px 16px;">
+                            <h3 style="margin:0 0 8px 0; font-size:1em;">Connect Your Codex Subscription</h3>
+                            <p style="margin:0 0 20px 0; font-size:0.85em; opacity:0.6; max-width:340px; margin-left:auto; margin-right:auto;">
+                                Use your ChatGPT Pro, Plus, or Team subscription to power Agent Zero with OpenAI's latest models.
+                            </p>
+
+                            <!-- Primary: Device Code Flow -->
+                            <button class="cdx-btn cdx-btn-primary cdx-btn-lg" style="width:100%; max-width:320px;"
+                                    @click="$store.codexProvider.startDeviceFlow()">
+                                Sign in with OpenAI
+                            </button>
+                            <p style="margin:8px 0 0 0; font-size:0.7em; opacity:0.4;">
+                                Get a code, enter it at OpenAI — no redirects needed
+                            </p>
+                        </div>
+
+                        <!-- Alternative: Import from Codex CLI -->
+                        <div class="cdx-card" style="padding:14px 16px;">
+                            <button class="cdx-btn cdx-btn-secondary" style="width:100%; margin-bottom:8px;"
+                                    @click="$store.codexProvider.showImport = !$store.codexProvider.showImport">
+                                Already have Codex CLI? Import tokens
+                            </button>
+                            <template x-if="$store.codexProvider.showImport">
+                                <div class="cdx-fade-in" style="margin-top:8px;">
+                                    <p style="font-size:0.8em; opacity:0.6; margin:0 0 8px 0;">
+                                        Run <code>codex auth login</code> locally, then paste your <code>~/.codex/auth.json</code> contents:
+                                    </p>
+                                    <textarea x-model="$store.codexProvider.importJson"
+                                              placeholder='Paste auth.json contents here...'
+                                              rows="4"
+                                              style="width:100%; padding:8px; border-radius:6px; background:color-mix(in srgb, currentColor 6%, transparent); border:1px solid color-mix(in srgb, currentColor 15%, transparent); color:inherit; font-family:monospace; font-size:0.75em; resize:vertical; box-sizing:border-box;"></textarea>
+                                    <button class="cdx-btn cdx-btn-primary" style="width:100%; margin-top:6px;"
+                                            @click="$store.codexProvider.importTokens()"
+                                            :disabled="!$store.codexProvider.importJson">
+                                        Import Tokens
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- ═══ DEVICE CODE FLOW (show code + poll) ═══ -->
+                <template x-if="$store.codexProvider.pairing">
+                    <div class="cdx-card cdx-fade-in" style="padding:24px 16px;">
+                        <div style="text-align:center;">
+                            <div class="cdx-dot cdx-dot-yellow" style="width:12px;height:12px;margin:0 auto 12px;"></div>
+                            <p style="font-size:0.9em; margin:0 0 16px 0;">
+                                <strong>Enter this code at OpenAI</strong>
+                            </p>
+
+                            <!-- The big user code -->
+                            <div class="cdx-code" x-text="$store.codexProvider.userCode"
+                                 title="Click to copy"
+                                 @click="navigator.clipboard.writeText($store.codexProvider.userCode)"></div>
+
+                            <p style="font-size:0.8em; opacity:0.6; margin:16px 0 8px 0;">
+                                Go to
+                                <a :href="$store.codexProvider.verificationUri" target="_blank" rel="noopener"
+                                   style="color:#10a37f; font-weight:500;"
+                                   x-text="$store.codexProvider.verificationUri"></a>
+                                and enter the code above.
+                            </p>
+                            <p style="font-size:0.75em; opacity:0.4; margin:0;">
+                                Waiting for you to sign in...
+                            </p>
+                        </div>
+
+                        <div style="margin-top:16px; text-align:center;">
+                            <button class="cdx-btn cdx-btn-secondary"
+                                    @click="$store.codexProvider.cancelPairing()">
+                                Cancel
+                            </button>
+                        </div>
+
+                        <template x-if="$store.codexProvider.pairingError">
+                            <div class="cdx-msg cdx-msg-error" style="text-align:left; margin-top:12px;"
+                                 x-text="$store.codexProvider.pairingError"></div>
+                        </template>
+                    </div>
+                </template>
+
+                <!-- ═══ CONNECTED STATE ═══ -->
+                <template x-if="$store.codexProvider.connected">
+                    <div class="cdx-fade-in">
+
+                        <!-- Account info -->
+                        <div class="cdx-card">
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <span class="cdx-dot" :class="$store.codexProvider.expired ? 'cdx-dot-yellow' : 'cdx-dot-green'"></span>
+                                <div style="flex:1;">
+                                    <strong style="font-size:0.9em;"
+                                            x-text="$store.codexProvider.expired ? 'Token Expired' : 'Connected'"></strong>
+                                    <template x-if="$store.codexProvider.accountInfo">
+                                        <div style="font-size:0.8em; opacity:0.6;">
+                                            <span x-text="$store.codexProvider.accountInfo.email"></span>
+                                            <span style="margin-left:6px; padding:2px 6px; border-radius:4px; background:#10a37f22; color:#10a37f; font-size:0.85em;"
+                                                  x-text="$store.codexProvider.accountInfo.plan"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                                <button class="cdx-btn cdx-btn-danger" style="font-size:0.75em;"
+                                        @click="$store.codexProvider.disconnect()">
+                                    Disconnect
+                                </button>
+                            </div>
+
+                            <!-- Expired warning -->
+                            <template x-if="$store.codexProvider.expired">
+                                <div style="margin-top:10px;">
+                                    <button class="cdx-btn cdx-btn-primary" style="width:100%;"
+                                            :disabled="$store.codexProvider.refreshing"
+                                            @click="$store.codexProvider.refreshToken()">
+                                        <span x-text="$store.codexProvider.refreshing ? 'Refreshing...' : 'Refresh Token'"></span>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- Proxy status -->
+                        <div class="cdx-card">
+                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+                                <span class="cdx-dot" :class="$store.codexProvider.proxyRunning ? 'cdx-dot-green' : 'cdx-dot-red'"></span>
+                                <strong style="font-size:0.85em;"
+                                        x-text="$store.codexProvider.proxyRunning ? 'Proxy Running' : 'Proxy Stopped'"></strong>
+                            </div>
+                            <template x-if="$store.codexProvider.proxyRunning">
+                                <div style="font-size:0.75em; opacity:0.5;">
+                                    <code x-text="$store.codexProvider.proxyUrl"></code>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- Model selection & apply -->
+                        <div class="cdx-card">
+                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+                                <strong style="font-size:0.85em;">Model Selection</strong>
+                                <template x-if="$store.codexProvider.loadingModels">
+                                    <span style="font-size:0.7em; opacity:0.5;">Loading models...</span>
+                                </template>
+                                <template x-if="$store.codexProvider.availableModels.length > 0">
+                                    <span style="font-size:0.7em; opacity:0.4;" x-text="$store.codexProvider.availableModels.length + ' models available'"></span>
+                                </template>
+                            </div>
+                            <div style="display:grid; gap:8px;">
+                                <label style="font-size:0.8em;">
+                                    Chat Model
+                                    <select class="cdx-select" x-model="$store.codexProvider.chatModel" style="margin-top:2px;">
+                                        <template x-for="m in $store.codexProvider.availableModels" :key="m.id">
+                                            <option :value="m.id" x-text="m.id"></option>
+                                        </template>
+                                    </select>
+                                </label>
+                                <label style="font-size:0.8em;">
+                                    Utility Model
+                                    <select class="cdx-select" x-model="$store.codexProvider.utilModel" style="margin-top:2px;">
+                                        <template x-for="m in $store.codexProvider.availableModels" :key="m.id">
+                                            <option :value="m.id" x-text="m.id"></option>
+                                        </template>
+                                    </select>
+                                </label>
+                                <label style="font-size:0.8em;">
+                                    Browser Model
+                                    <select class="cdx-select" x-model="$store.codexProvider.browserModel" style="margin-top:2px;">
+                                        <template x-for="m in $store.codexProvider.availableModels" :key="m.id">
+                                            <option :value="m.id" x-text="m.id"></option>
+                                        </template>
+                                    </select>
+                                </label>
+                            </div>
+                            <button class="cdx-btn cdx-btn-primary" style="width:100%; margin-top:12px;"
+                                    :disabled="$store.codexProvider.applying || $store.codexProvider.availableModels.length === 0"
+                                    @click="$store.codexProvider.applyToAgent()">
+                                <span x-text="$store.codexProvider.applying ? 'Applying...' : 'Apply to Agent Zero'"></span>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- ═══ MESSAGE TOAST ═══ -->
+                <template x-if="$store.codexProvider.message">
+                    <div class="cdx-msg cdx-fade-in"
+                         :class="'cdx-msg-' + ($store.codexProvider.message.type || 'info')"
+                         x-text="$store.codexProvider.message.text">
+                    </div>
+                </template>
+
+            </div>
+        </template>
+    </div>
+</body>
+</html>

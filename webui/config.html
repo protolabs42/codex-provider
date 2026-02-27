@@ -1,0 +1,56 @@
+<html>
+<head>
+    <title>Codex Provider Settings</title>
+    <script type="module">
+        import { store } from "/components/plugins/plugin-settings-store.js";
+    </script>
+</head>
+<body>
+    <div x-data>
+        <div style="display:grid; gap:14px;">
+
+            <p style="font-size:0.8em; opacity:0.6; margin:0;">
+                Most users should connect via the plugin dashboard (OAuth pairing). These settings are for advanced configuration.
+            </p>
+
+            <!-- Upstream API Base -->
+            <label style="font-size:0.85em;">
+                Upstream API Base
+                <input type="text"
+                       x-model="$store.pluginSettings.settings.api_base"
+                       placeholder="https://api.openai.com"
+                       style="width:100%; padding:6px 8px; border-radius:6px; background:var(--bg-primary, #0d0d1a); border:1px solid var(--border, #333); color:inherit; margin-top:4px; box-sizing:border-box;" />
+                <p style="font-size:0.7em; opacity:0.5; margin:4px 0 0 0;">
+                    Any OpenAI-compatible endpoint base URL
+                </p>
+            </label>
+
+            <!-- Proxy Port -->
+            <label style="font-size:0.85em;">
+                Local Proxy Port
+                <input type="number"
+                       x-model.number="$store.pluginSettings.settings.proxy_port"
+                       placeholder="8400"
+                       style="width:100%; padding:6px 8px; border-radius:6px; background:var(--bg-primary, #0d0d1a); border:1px solid var(--border, #333); color:inherit; margin-top:4px; box-sizing:border-box;" />
+            </label>
+
+            <!-- Default Models -->
+            <label style="font-size:0.85em;">
+                Default Chat Model
+                <input type="text"
+                       x-model="$store.pluginSettings.settings.chat_model"
+                       placeholder="gpt-5.3-codex"
+                       style="width:100%; padding:6px 8px; border-radius:6px; background:var(--bg-primary, #0d0d1a); border:1px solid var(--border, #333); color:inherit; margin-top:4px; box-sizing:border-box;" />
+            </label>
+
+            <!-- Auto Configure -->
+            <label style="font-size:0.85em; display:flex; align-items:center; gap:8px;">
+                <input type="checkbox"
+                       x-model="$store.pluginSettings.settings.auto_configure" />
+                Auto-start proxy on agent initialization
+            </label>
+
+        </div>
+    </div>
+</body>
+</html>
