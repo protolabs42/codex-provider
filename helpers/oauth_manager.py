@@ -22,6 +22,9 @@ import aiohttp
 
 logger = logging.getLogger("codex-provider.oauth")
 
+# Mimic Codex CLI User-Agent — Cloudflare blocks aiohttp's default UA on auth.openai.com
+_HEADERS = {"User-Agent": "codex-cli/1.0"}
+
 # OpenAI OAuth endpoints (from Codex CLI source: codex-rs/login/src/device_code_auth.rs)
 DEVICE_CODE_URL = "https://auth.openai.com/api/accounts/deviceauth/usercode"
 DEVICE_TOKEN_URL = "https://auth.openai.com/api/accounts/deviceauth/token"
@@ -142,7 +145,7 @@ async def start_device_flow() -> OAuthSession:
         async with http.post(
             DEVICE_CODE_URL,
             json={"client_id": CLIENT_ID},
-            headers={"Content-Type": "application/json"},
+            headers={**_HEADERS, "Content-Type": "application/json"},
         ) as resp:
             if resp.status != 200:
                 text = await resp.text()
@@ -206,7 +209,7 @@ async def poll_device_flow(session_id: str) -> OAuthSession | None:
                 "device_auth_id": session.device_code,
                 "user_code": session.user_code,
             },
-            headers={"Content-Type": "application/json"},
+            headers={**_HEADERS, "Content-Type": "application/json"},
         ) as resp:
             data = await resp.json()
             error_code = _get_error_code(data)
@@ -245,7 +248,7 @@ async def poll_device_flow(session_id: str) -> OAuthSession | None:
                 async with http.post(
                     TOKEN_URL,
                     data=exchange_body,
-                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                    headers={**_HEADERS, "Content-Type": "application/x-www-form-urlencoded"},
                 ) as token_resp:
                     if token_resp.status == 200:
                         tokens = await token_resp.json()
@@ -333,7 +336,7 @@ async def exchange_pkce_code(session_id: str, code: str, state: str) -> OAuthSes
             "code": code,
             "redirect_uri": session.redirect_uri,
             "code_verifier": session.code_verifier,
-        }) as resp:
+        }, headers=_HEADERS) as resp:
             if resp.status == 200:
                 data = await resp.json()
                 session.access_token = data.get("access_token")
@@ -358,7 +361,7 @@ async def refresh_access_token(refresh_token: str) -> dict | None:
             "grant_type": "refresh_token",
             "client_id": CLIENT_ID,
             "refresh_token": refresh_token,
-        }) as resp:
+        }, headers=_HEADERS) as resp:
             if resp.status == 200:
                 data = await resp.json()
                 return {
@@ -378,7 +381,7 @@ async def revoke_token(token: str) -> bool:
         async with http.post(REVOKE_URL, data={
             "client_id": CLIENT_ID,
             "token": token,
-        }) as resp:
+        }, headers=_HEADERS) as resp:
             return resp.status == 200
 
 
