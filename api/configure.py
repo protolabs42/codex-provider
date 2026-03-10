@@ -8,7 +8,7 @@ _plugin_root = Path(__file__).parent.parent
 if str(_plugin_root) not in sys.path:
     sys.path.insert(0, str(_plugin_root))
 
-from helpers.proxy_server import ensure_running
+from codex_helpers.proxy_server import ensure_running
 
 
 class ConfigureHandler(ApiHandler):

@@ -27,7 +27,7 @@ class CodexProxyStart(Extension):
         if not has_creds:
             return
 
-        from helpers.proxy_server import ensure_running, get_proxy
+        from codex_helpers.proxy_server import ensure_running, get_proxy
 
         proxy = get_proxy()
         if proxy and proxy._running:

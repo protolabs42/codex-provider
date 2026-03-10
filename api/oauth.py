@@ -10,8 +10,8 @@ _plugin_root = Path(__file__).parent.parent
 if str(_plugin_root) not in sys.path:
     sys.path.insert(0, str(_plugin_root))
 
-from helpers import oauth_manager
-from helpers.proxy_server import ensure_running, get_proxy
+from codex_helpers import oauth_manager
+from codex_helpers.proxy_server import ensure_running, get_proxy
 
 
 class OAuthHandler(ApiHandler):
@@ -301,7 +301,7 @@ class OAuthHandler(ApiHandler):
 
         # Extract chatgpt_account_id from JWT (required for ChatGPT backend API)
         if session.access_token:
-            from helpers.proxy_server import _extract_account_id_from_jwt
+            from codex_helpers.proxy_server import _extract_account_id_from_jwt
             account_id = _extract_account_id_from_jwt(session.access_token)
             if account_id:
                 config["chatgpt_account_id"] = account_id
