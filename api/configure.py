@@ -2,7 +2,7 @@
 
 import sys
 from pathlib import Path
-from python.helpers.api import ApiHandler, Request, Response
+from helpers.api import ApiHandler, Request, Response
 
 _plugin_root = Path(__file__).parent.parent
 if str(_plugin_root) not in sys.path:
@@ -25,7 +25,7 @@ class ConfigureHandler(ApiHandler):
 
     async def _apply_to_settings(self, input: dict) -> dict:
         """Write Codex provider into A0's settings so it uses the proxy."""
-        from python.helpers import plugins, settings as a0_settings, dotenv
+        from helpers import plugins, settings as a0_settings, dotenv
 
         config = plugins.get_plugin_config("codex-provider") or {}
         if not config.get("api_key") and not config.get("oauth_access_token"):

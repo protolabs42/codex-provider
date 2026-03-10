@@ -4,7 +4,7 @@ import json
 import sys
 import time
 from pathlib import Path
-from python.helpers.api import ApiHandler, Request, Response
+from helpers.api import ApiHandler, Request, Response
 
 _plugin_root = Path(__file__).parent.parent
 if str(_plugin_root) not in sys.path:
@@ -214,7 +214,7 @@ class OAuthHandler(ApiHandler):
 
     async def _refresh_token(self) -> dict:
         """Refresh the OAuth access token."""
-        from python.helpers import plugins
+        from helpers import plugins
 
         config = plugins.get_plugin_config("codex-provider") or {}
         refresh_token = config.get("oauth_refresh_token", "")
@@ -239,7 +239,7 @@ class OAuthHandler(ApiHandler):
 
     async def _disconnect(self) -> dict:
         """Disconnect — revoke tokens and clear config."""
-        from python.helpers import plugins
+        from helpers import plugins
 
         config = plugins.get_plugin_config("codex-provider") or {}
 
@@ -266,7 +266,7 @@ class OAuthHandler(ApiHandler):
 
     async def _connection_status(self) -> dict:
         """Get current connection status."""
-        from python.helpers import plugins
+        from helpers import plugins
 
         config = plugins.get_plugin_config("codex-provider") or {}
         access_token = config.get("oauth_access_token", "")
@@ -290,7 +290,7 @@ class OAuthHandler(ApiHandler):
 
     async def _persist_tokens(self, session: oauth_manager.OAuthSession):
         """Save tokens to plugin config and start proxy."""
-        from python.helpers import plugins
+        from helpers import plugins
 
         config = plugins.get_plugin_config("codex-provider") or {}
         config["auth_mode"] = "oauth"

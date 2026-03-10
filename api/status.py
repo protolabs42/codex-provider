@@ -2,7 +2,7 @@
 
 import sys
 from pathlib import Path
-from python.helpers.api import ApiHandler, Request, Response
+from helpers.api import ApiHandler, Request, Response
 
 _plugin_root = Path(__file__).parent.parent
 if str(_plugin_root) not in sys.path:
@@ -44,7 +44,7 @@ class StatusHandler(ApiHandler):
 
     async def _test_connection(self, input: dict) -> dict:
         """Test the upstream connection with current credentials."""
-        from python.helpers import plugins
+        from helpers import plugins
 
         config = plugins.get_plugin_config("codex-provider") or {}
         if not config.get("api_key") and not config.get("oauth_access_token"):
@@ -71,7 +71,7 @@ class StatusHandler(ApiHandler):
 
     async def _start_proxy(self, input: dict) -> dict:
         """Manually start/restart the proxy with current config."""
-        from python.helpers import plugins
+        from helpers import plugins
 
         config = plugins.get_plugin_config("codex-provider") or {}
         proxy = get_proxy()
