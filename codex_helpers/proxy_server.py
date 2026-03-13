@@ -13,6 +13,7 @@ import json
 import logging
 import threading
 import time
+import urllib.request
 import uuid
 
 from aiohttp import web, ClientSession, ClientTimeout
@@ -25,6 +26,8 @@ _proxy_lock = threading.Lock()
 # ChatGPT backend constants (from numman-ali/opencode-openai-codex-auth + Codex CLI)
 CODEX_BASE_URL = "https://chatgpt.com/backend-api"
 CODEX_RESPONSES_PATH = "/codex/responses"
+TOKEN_URL = "https://auth.openai.com/oauth/token"
+OAUTH_CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
 
 
 class CodexProxy:
@@ -93,6 +96,56 @@ class CodexProxy:
                 return info
         return ""
 
+    async def _refresh_token(self) -> bool:
+        """Refresh expired OAuth token. Returns True on success."""
+        if self.config.get("auth_mode") != "oauth":
+            return False
+        rt = self.config.get("oauth_refresh_token", "")
+        if not rt:
+            logger.error("No refresh token available")
+            return False
+        try:
+            data = json.dumps({
+                "grant_type": "refresh_token",
+                "client_id": OAUTH_CLIENT_ID,
+                "refresh_token": rt,
+            }).encode()
+            req = urllib.request.Request(TOKEN_URL, data=data, headers={
+                "Content-Type": "application/json",
+                "User-Agent": "codex-cli/1.0",
+            })
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                result = json.loads(resp.read())
+            new_at = result.get("access_token", "")
+            new_rt = result.get("refresh_token", rt)
+            if not new_at:
+                logger.error("Token refresh returned empty access_token")
+                return False
+            self.config["oauth_access_token"] = new_at
+            self.config["oauth_refresh_token"] = new_rt
+            self.config.pop("chatgpt_account_id", None)  # Force re-extract from new JWT
+            self._save_config()
+            logger.info("OAuth token refreshed successfully")
+            return True
+        except Exception as e:
+            logger.error(f"Token refresh failed: {e}")
+            return False
+
+    def _save_config(self):
+        """Persist config back to plugin config.json."""
+        try:
+            import python.helpers.plugins as plugins
+            plugins.save_plugin_config("codex-provider", "", "", self.config)
+        except Exception:
+            # Fallback: write directly
+            try:
+                import pathlib
+                cfg_path = pathlib.Path(__file__).parent.parent / "config.json"
+                with open(cfg_path, "w") as f:
+                    json.dump(self.config, f, indent=2)
+            except Exception as e2:
+                logger.warning(f"Could not save config: {e2}")
+
     def _build_codex_headers(self) -> dict:
         """Build headers for ChatGPT backend Codex API."""
         token = self._get_access_token()
@@ -144,43 +197,52 @@ class CodexProxy:
         is_streaming = body.get("stream", False)
 
         target_url = f"{CODEX_BASE_URL}{CODEX_RESPONSES_PATH}"
-        headers = self._build_codex_headers()
         session = self._get_session()
 
-        logger.info(f"Codex proxy → {target_url} model={codex_body.get('model')} stream={is_streaming}")
+        for attempt in range(2):
+            headers = self._build_codex_headers()
+            logger.info(f"Codex proxy → {target_url} model={codex_body.get('model')} stream={is_streaming} attempt={attempt+1}")
 
-        try:
-            async with session.post(
-                target_url,
-                json=codex_body,
-                headers=headers,
-            ) as resp:
-                content_type = resp.headers.get("Content-Type", "")
+            try:
+                async with session.post(
+                    target_url,
+                    json=codex_body,
+                    headers=headers,
+                ) as resp:
+                    if resp.status == 401 and attempt == 0:
+                        error_text = await resp.text()
+                        logger.warning(f"Got 401, attempting token refresh: {error_text[:200]}")
+                        if await self._refresh_token():
+                            continue  # Retry with new token
+                        return web.json_response(
+                            {"error": {"message": f"Codex API error (401): {error_text[:200]}", "type": "upstream_error"}},
+                            status=401,
+                        )
 
-                if resp.status != 200:
-                    error_text = await resp.text()
-                    logger.error(f"Codex API error {resp.status}: {error_text[:500]}")
-                    return web.json_response(
-                        {"error": {"message": f"Codex API error ({resp.status}): {error_text[:200]}", "type": "upstream_error"}},
-                        status=resp.status,
-                    )
+                    if resp.status != 200:
+                        error_text = await resp.text()
+                        logger.error(f"Codex API error {resp.status}: {error_text[:500]}")
+                        return web.json_response(
+                            {"error": {"message": f"Codex API error ({resp.status}): {error_text[:200]}", "type": "upstream_error"}},
+                            status=resp.status,
+                        )
 
-                if is_streaming:
-                    return await self._stream_responses_to_chat(request, resp, body)
-                else:
-                    return await self._collect_responses_to_chat(resp, body)
+                    if is_streaming:
+                        return await self._stream_responses_to_chat(request, resp, body)
+                    else:
+                        return await self._collect_responses_to_chat(resp, body)
 
-        except asyncio.TimeoutError:
-            return web.json_response(
-                {"error": {"message": "Upstream timeout", "type": "timeout"}},
-                status=504,
-            )
-        except Exception as e:
-            logger.exception("Proxy error")
-            return web.json_response(
-                {"error": {"message": str(e), "type": "proxy_error"}},
-                status=502,
-            )
+            except asyncio.TimeoutError:
+                return web.json_response(
+                    {"error": {"message": "Upstream timeout", "type": "timeout"}},
+                    status=504,
+                )
+            except Exception as e:
+                logger.exception("Proxy error")
+                return web.json_response(
+                    {"error": {"message": str(e), "type": "proxy_error"}},
+                    status=502,
+                )
 
     async def _responses(self, request: web.Request) -> web.Response:
         """Handle /v1/responses — near-passthrough for LiteLLM's Responses API calls."""
@@ -207,43 +269,54 @@ class CodexProxy:
         is_streaming = body.get("stream", True)
         body["stream"] = True  # Always stream from backend
         target_url = f"{CODEX_BASE_URL}{CODEX_RESPONSES_PATH}"
-        headers = self._build_codex_headers()
         session = self._get_session()
 
-        logger.info(f"Codex proxy /v1/responses → {target_url} model={body.get('model')} stream={is_streaming}")
+        for attempt in range(2):
+            headers = self._build_codex_headers()
+            logger.info(f"Codex proxy /v1/responses → {target_url} model={body.get('model')} stream={is_streaming} attempt={attempt+1}")
 
-        try:
-            async with session.post(
-                target_url,
-                json=body,
-                headers=headers,
-            ) as resp:
-                if resp.status != 200:
-                    error_text = await resp.text()
-                    logger.error(f"Codex API error {resp.status}: {error_text[:500]}")
-                    return web.json_response(
-                        {"error": {"message": f"Codex API error ({resp.status}): {error_text[:200]}", "type": "upstream_error"}},
-                        status=resp.status,
-                    )
+            try:
+                async with session.post(
+                    target_url,
+                    json=body,
+                    headers=headers,
+                ) as resp:
+                    if resp.status == 401 and attempt == 0:
+                        error_text = await resp.text()
+                        logger.warning(f"Got 401, attempting token refresh: {error_text[:200]}")
+                        if await self._refresh_token():
+                            continue  # Retry with new token
+                        return web.json_response(
+                            {"error": {"message": f"Codex API error (401): {error_text[:200]}", "type": "upstream_error"}},
+                            status=401,
+                        )
 
-                if is_streaming:
-                    # Stream SSE back as-is — LiteLLM expects Responses API SSE format
-                    return await self._stream_passthrough(request, resp)
-                else:
-                    # Collect and return the final response object
-                    return await self._collect_response(resp)
+                    if resp.status != 200:
+                        error_text = await resp.text()
+                        logger.error(f"Codex API error {resp.status}: {error_text[:500]}")
+                        return web.json_response(
+                            {"error": {"message": f"Codex API error ({resp.status}): {error_text[:200]}", "type": "upstream_error"}},
+                            status=resp.status,
+                        )
 
-        except asyncio.TimeoutError:
-            return web.json_response(
-                {"error": {"message": "Upstream timeout", "type": "timeout"}},
-                status=504,
-            )
-        except Exception as e:
-            logger.exception("Proxy error in /v1/responses")
-            return web.json_response(
-                {"error": {"message": str(e), "type": "proxy_error"}},
-                status=502,
-            )
+                    if is_streaming:
+                        # Stream SSE back as-is — LiteLLM expects Responses API SSE format
+                        return await self._stream_passthrough(request, resp)
+                    else:
+                        # Collect and return the final response object
+                        return await self._collect_response(resp)
+
+            except asyncio.TimeoutError:
+                return web.json_response(
+                    {"error": {"message": "Upstream timeout", "type": "timeout"}},
+                    status=504,
+                )
+            except Exception as e:
+                logger.exception("Proxy error in /v1/responses")
+                return web.json_response(
+                    {"error": {"message": str(e), "type": "proxy_error"}},
+                    status=502,
+                )
 
     async def _stream_passthrough(self, request: web.Request, resp) -> web.StreamResponse:
         """Pass SSE stream from upstream back to client as-is."""
