@@ -264,8 +264,26 @@ class CodexProxy:
         return response
 
     async def _collect_response(self, resp) -> web.Response:
-        """Collect SSE stream and return the final response.completed object."""
+        """Collect SSE stream and return the final response.completed object.
+
+        Handles two upstream formats:
+        - SSE (text/event-stream): parse events, return response.completed payload
+        - JSON (application/json): return body directly (non-streaming upstream)
+        """
+        content_type = resp.headers.get("Content-Type", "")
+
+        # If upstream returned plain JSON (not SSE), return it directly
+        if "application/json" in content_type:
+            try:
+                data = await resp.json()
+            except Exception:
+                text = await resp.text()
+                return web.Response(text=text, content_type="application/json")
+            return web.json_response(data)
+
+        # SSE stream — collect text deltas as fallback + look for response.completed
         final_response = None
+        collected_text = ""
         async for chunk in resp.content.iter_any():
             for line in chunk.decode("utf-8", errors="replace").split("\n"):
                 line = line.strip()
@@ -280,9 +298,24 @@ class CodexProxy:
                     continue
                 if event.get("type") == "response.completed":
                     final_response = event.get("response", {})
+                elif event.get("type") == "response.output_text.delta":
+                    collected_text += event.get("delta", "")
 
         if final_response:
             return web.json_response(final_response)
+
+        # Fallback: build a minimal response from collected text deltas
+        if collected_text:
+            return web.json_response({
+                "id": f"resp-{uuid.uuid4().hex[:24]}",
+                "object": "response",
+                "output": [{
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [{"type": "output_text", "text": collected_text}],
+                }],
+                "status": "completed",
+            })
 
         return web.json_response(
             {"error": {"message": "No response.completed event received", "type": "upstream_error"}},
