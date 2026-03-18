@@ -134,7 +134,7 @@ class CodexProxy:
     def _save_config(self):
         """Persist config back to plugin config.json."""
         try:
-            import python.helpers.plugins as plugins
+            import helpers.plugins as plugins
             plugins.save_plugin_config("codex-provider", "", "", self.config)
         except Exception:
             # Fallback: write directly
