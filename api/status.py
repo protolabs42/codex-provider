@@ -46,7 +46,7 @@ class StatusHandler(ApiHandler):
         """Test the upstream connection with current credentials."""
         from helpers import plugins
 
-        config = plugins.get_plugin_config("codex-provider") or {}
+        config = plugins.get_plugin_config("codex_provider") or {}
         if not config.get("api_key") and not config.get("oauth_access_token"):
             return {"ok": False, "error": "No credentials configured"}
 
@@ -73,7 +73,7 @@ class StatusHandler(ApiHandler):
         """Manually start/restart the proxy with current config."""
         from helpers import plugins
 
-        config = plugins.get_plugin_config("codex-provider") or {}
+        config = plugins.get_plugin_config("codex_provider") or {}
         proxy = get_proxy()
         if proxy and proxy._running:
             await proxy.stop()

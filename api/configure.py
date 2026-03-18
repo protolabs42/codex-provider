@@ -27,7 +27,7 @@ class ConfigureHandler(ApiHandler):
         """Write Codex provider into A0's settings so it uses the proxy."""
         from helpers import plugins, settings as a0_settings, dotenv
 
-        config = plugins.get_plugin_config("codex-provider") or {}
+        config = plugins.get_plugin_config("codex_provider") or {}
         if not config.get("api_key") and not config.get("oauth_access_token"):
             return {"ok": False, "error": "No credentials configured. Set api_key or oauth tokens first."}
 

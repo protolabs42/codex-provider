@@ -15,7 +15,7 @@ if str(_plugin_root) not in sys.path:
 class CodexProxyStart(Extension):
 
     async def execute(self, loop_data: LoopData = LoopData(), **kwargs):
-        config = plugins.get_plugin_config("codex-provider", self.agent)
+        config = plugins.get_plugin_config("codex_provider", self.agent)
         if not config:
             return
 

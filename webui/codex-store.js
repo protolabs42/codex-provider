@@ -259,6 +259,6 @@ export const store = createStore("codexProvider", {
 
     async _api(endpoint, body) {
         const { callJsonApi } = await import("/js/api.js");
-        return await callJsonApi(`plugins/codex-provider/${endpoint}`, body);
+        return await callJsonApi(`plugins/codex_provider/${endpoint}`, body);
     },
 });

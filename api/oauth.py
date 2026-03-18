@@ -216,7 +216,7 @@ class OAuthHandler(ApiHandler):
         """Refresh the OAuth access token."""
         from helpers import plugins
 
-        config = plugins.get_plugin_config("codex-provider") or {}
+        config = plugins.get_plugin_config("codex_provider") or {}
         refresh_token = config.get("oauth_refresh_token", "")
         if not refresh_token:
             return {"ok": False, "error": "No refresh token stored"}
@@ -228,7 +228,7 @@ class OAuthHandler(ApiHandler):
         config["oauth_access_token"] = result["access_token"]
         config["oauth_refresh_token"] = result["refresh_token"]
         config["token_expires_at"] = result["expires_at"]
-        plugins.save_plugin_config("codex-provider", "", "", config)
+        plugins.save_plugin_config("codex_provider", "", "", config)
 
         # Update running proxy
         proxy = get_proxy()
@@ -241,7 +241,7 @@ class OAuthHandler(ApiHandler):
         """Disconnect — revoke tokens and clear config."""
         from helpers import plugins
 
-        config = plugins.get_plugin_config("codex-provider") or {}
+        config = plugins.get_plugin_config("codex_provider") or {}
 
         # Revoke tokens
         if config.get("oauth_refresh_token"):
@@ -255,7 +255,7 @@ class OAuthHandler(ApiHandler):
         config["token_expires_at"] = None
         config["auth_mode"] = "none"
         config["auto_configure"] = False
-        plugins.save_plugin_config("codex-provider", "", "", config)
+        plugins.save_plugin_config("codex_provider", "", "", config)
 
         # Stop proxy
         proxy = get_proxy()
@@ -268,7 +268,7 @@ class OAuthHandler(ApiHandler):
         """Get current connection status."""
         from helpers import plugins
 
-        config = plugins.get_plugin_config("codex-provider") or {}
+        config = plugins.get_plugin_config("codex_provider") or {}
         access_token = config.get("oauth_access_token", "")
         has_refresh = bool(config.get("oauth_refresh_token", ""))
         expires_at = config.get("token_expires_at")
@@ -292,7 +292,7 @@ class OAuthHandler(ApiHandler):
         """Save tokens to plugin config and start proxy."""
         from helpers import plugins
 
-        config = plugins.get_plugin_config("codex-provider") or {}
+        config = plugins.get_plugin_config("codex_provider") or {}
         config["auth_mode"] = "oauth"
         config["oauth_access_token"] = session.access_token
         config["oauth_refresh_token"] = session.refresh_token or ""
@@ -306,7 +306,7 @@ class OAuthHandler(ApiHandler):
             if account_id:
                 config["chatgpt_account_id"] = account_id
 
-        plugins.save_plugin_config("codex-provider", "", "", config)
+        plugins.save_plugin_config("codex_provider", "", "", config)
 
         # Start/restart proxy with new tokens
         proxy = get_proxy()

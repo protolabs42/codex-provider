@@ -1,4 +1,4 @@
-name: codex-provider
+name: codex_provider
 title: Codex Provider
 description: Connect Agent Zero to OpenAI Codex models via subscription or API key. Runs a local proxy for OAuth token management, inspired by OpenClaw.
 version: 0.1.0
