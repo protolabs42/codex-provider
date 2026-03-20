@@ -71,55 +71,48 @@ class ConfigureHandler(ApiHandler):
         }
 
     async def _get_available_models(self) -> dict:
-        """Fetch OpenAI models from OpenRouter (public, no auth needed)."""
-        import aiohttp
+        """Return models available through the ChatGPT subscription backend.
 
+        Only models that work via chatgpt.com/backend-api/codex/responses
+        are listed. API-only models (gpt-5.4-pro, o3, etc.) are excluded
+        because they require a separate OpenAI API key.
+        """
+        from helpers import plugins
+
+        config = plugins.get_plugin_config("codex_provider") or {}
+
+        # Try fetching from the running proxy first (it has the curated list)
         try:
-            async with aiohttp.ClientSession() as http:
-                async with http.get(
-                    "https://openrouter.ai/api/v1/models",
-                    timeout=aiohttp.ClientTimeout(total=10),
-                ) as resp:
-                    if resp.status != 200:
-                        return self._fallback_models()
-
-                    data = await resp.json()
-                    models = []
-                    for m in data.get("data", []):
-                        mid = m.get("id", "")
-                        # Only OpenAI models, strip "openai/" prefix
-                        if not mid.startswith("openai/"):
-                            continue
-                        short_id = mid.replace("openai/", "")
-                        models.append({
-                            "id": short_id,
-                            "name": m.get("name", short_id),
-                            "context_length": m.get("context_length", 0),
-                        })
-
-                    # Sort: codex first, then o-series, then gpt, then rest
-                    def sort_key(m):
-                        mid = m["id"]
-                        if "codex" in mid: return (0, mid)
-                        if mid.startswith("o"): return (1, mid)
-                        if mid.startswith("gpt"): return (2, mid)
-                        return (3, mid)
-                    models.sort(key=sort_key)
-                    return {"ok": True, "models": models}
-
+            from codex_helpers.proxy_server import get_proxy
+            proxy = get_proxy()
+            if proxy and proxy._running:
+                import aiohttp
+                async with aiohttp.ClientSession() as http:
+                    async with http.get(
+                        f"http://127.0.0.1:{config.get('proxy_port', 8400)}/v1/models",
+                        timeout=aiohttp.ClientTimeout(total=5),
+                    ) as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            models = [{"id": m["id"], "name": m["id"]} for m in data.get("data", [])]
+                            if models:
+                                return {"ok": True, "models": models}
         except Exception:
-            return self._fallback_models()
+            pass
 
-    def _fallback_models(self) -> dict:
-        """Hardcoded fallback if OpenRouter is unreachable."""
+        # Fallback: curated list of models known to work with ChatGPT subscription
         return {
             "ok": True,
             "models": [
+                {"id": "gpt-5.4", "name": "GPT-5.4"},
+                {"id": "gpt-5.4-mini", "name": "GPT-5.4 Mini"},
+                {"id": "gpt-5.4-nano", "name": "GPT-5.4 Nano"},
                 {"id": "gpt-5.3-codex", "name": "GPT-5.3 Codex"},
+                {"id": "gpt-5.3-codex-spark", "name": "GPT-5.3 Codex Spark"},
                 {"id": "gpt-5.2-codex", "name": "GPT-5.2 Codex"},
+                {"id": "gpt-5.2", "name": "GPT-5.2"},
                 {"id": "gpt-5.1-codex", "name": "GPT-5.1 Codex"},
                 {"id": "gpt-5.1-codex-mini", "name": "GPT-5.1 Codex Mini"},
-                {"id": "gpt-5.2", "name": "GPT-5.2"},
                 {"id": "gpt-5.1", "name": "GPT-5.1"},
             ],
         }
