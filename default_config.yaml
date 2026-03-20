@@ -17,8 +17,6 @@ proxy_port: 8400
 auto_configure: false
 
 # Default models (verified working with ChatGPT subscription)
-# Note: gpt-5.4 and gpt-5.3-codex are blocked on ChatGPT backend API
-# since ~Mar 10, 2026. Use gpt-5.2-codex until OpenAI resolves this.
-chat_model: "gpt-5.2-codex"
+chat_model: "gpt-5.4"
 util_model: "gpt-5.1-codex-mini"
 browser_model: "gpt-5.1-codex-mini"

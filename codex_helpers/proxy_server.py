@@ -154,7 +154,8 @@ class CodexProxy:
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
             "OpenAI-Beta": "responses=experimental",
-            "originator": "codex_cli_rs",
+            "originator": "openclaw",
+            "User-Agent": "openclaw/1.0",
             "accept": "text/event-stream",
         }
         if account_id:
