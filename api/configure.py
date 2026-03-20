@@ -24,8 +24,8 @@ class ConfigureHandler(ApiHandler):
             return {"ok": False, "error": f"Unknown action: {action}"}
 
     async def _apply_to_settings(self, input: dict) -> dict:
-        """Write Codex provider into A0's settings so it uses the proxy."""
-        from helpers import plugins, settings as a0_settings, dotenv
+        """Write Codex provider into _model_config plugin so A0 uses the proxy."""
+        from helpers import plugins, dotenv
 
         config = plugins.get_plugin_config("codex_provider") or {}
         if not config.get("api_key") and not config.get("oauth_access_token"):
@@ -34,30 +34,32 @@ class ConfigureHandler(ApiHandler):
         # Start proxy
         proxy = await ensure_running(config)
 
-        chat_model = input.get("chat_model", config.get("chat_model", "gpt-5.3-codex"))
+        chat_model = input.get("chat_model", config.get("chat_model", "gpt-5.2-codex"))
         util_model = input.get("util_model", config.get("util_model", "gpt-5.1-codex-mini"))
         browser_model = input.get("browser_model", config.get("browser_model", "gpt-5.1-codex-mini"))
 
-        dummy_key = "sk-codex-proxy-local"
+        # Write to _model_config plugin (the current model system on dev branch)
+        mc_config = plugins.get_plugin_config("_model_config") or {}
+        mc_config.setdefault("chat_model", {})
+        mc_config["chat_model"]["provider"] = "other"
+        mc_config["chat_model"]["name"] = chat_model
+        mc_config["chat_model"]["api_base"] = proxy.base_url
 
-        # Use A0's settings API instead of hardcoded file paths
-        a0_settings.set_settings_delta({
-            "chat_model_provider": "other",
-            "chat_model_name": chat_model,
-            "chat_model_api_base": proxy.base_url,
-            "chat_model_api_key": dummy_key,
-            "util_model_provider": "other",
-            "util_model_name": util_model,
-            "util_model_api_base": proxy.base_url,
-            "util_model_api_key": dummy_key,
-            "browser_model_provider": "other",
-            "browser_model_name": browser_model,
-            "browser_model_api_base": proxy.base_url,
-            "browser_model_api_key": dummy_key,
-        })
+        mc_config.setdefault("utility_model", {})
+        mc_config["utility_model"]["provider"] = "other"
+        mc_config["utility_model"]["name"] = util_model
+        mc_config["utility_model"]["api_base"] = proxy.base_url
 
-        # Set the centralized API key so A0's banner check doesn't complain
-        dotenv.save_dotenv_value("API_KEY_OTHER", dummy_key)
+        plugins.save_plugin_config("_model_config", "", "", mc_config)
+
+        # Set the centralized API key so LiteLLM and banner check work
+        dotenv.save_dotenv_value("API_KEY_OTHER", "sk-codex-proxy-local")
+
+        # Save selected models back to codex_provider config
+        config["chat_model"] = chat_model
+        config["util_model"] = util_model
+        config["browser_model"] = browser_model
+        plugins.save_plugin_config("codex_provider", "", "", config)
 
         return {
             "ok": True,
