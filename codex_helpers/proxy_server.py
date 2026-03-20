@@ -18,7 +18,7 @@ import uuid
 
 from aiohttp import web, ClientSession, ClientTimeout
 
-logger = logging.getLogger("codex_provider")
+logger = logging.getLogger("codex-provider")
 
 _proxy_instance = None
 _proxy_lock = threading.Lock()
@@ -134,8 +134,8 @@ class CodexProxy:
     def _save_config(self):
         """Persist config back to plugin config.json."""
         try:
-            import helpers.plugins as plugins
-            plugins.save_plugin_config("codex_provider", "", "", self.config)
+            import python.helpers.plugins as plugins
+            plugins.save_plugin_config("codex-provider", "", "", self.config)
         except Exception:
             # Fallback: write directly
             try:
@@ -171,13 +171,22 @@ class CodexProxy:
         })
 
     async def _models(self, request: web.Request) -> web.Response:
-        """Return available Codex models (hardcoded, no upstream fetch needed)."""
+        """Return available Codex models.
+
+        Note: gpt-5.4, gpt-5.3-codex, and gpt-5.3-codex-spark are blocked on
+        ChatGPT backend API since ~Mar 10, 2026 (openai/codex#14181).
+        They are listed but may return errors until OpenAI re-enables them.
+        """
         models = [
+            {"id": "gpt-5.4", "object": "model", "owned_by": "openai"},
+            {"id": "gpt-5.4-mini", "object": "model", "owned_by": "openai"},
+            {"id": "gpt-5.4-nano", "object": "model", "owned_by": "openai"},
             {"id": "gpt-5.3-codex", "object": "model", "owned_by": "openai"},
+            {"id": "gpt-5.3-codex-spark", "object": "model", "owned_by": "openai"},
             {"id": "gpt-5.2-codex", "object": "model", "owned_by": "openai"},
+            {"id": "gpt-5.2", "object": "model", "owned_by": "openai"},
             {"id": "gpt-5.1-codex", "object": "model", "owned_by": "openai"},
             {"id": "gpt-5.1-codex-mini", "object": "model", "owned_by": "openai"},
-            {"id": "gpt-5.2", "object": "model", "owned_by": "openai"},
             {"id": "gpt-5.1", "object": "model", "owned_by": "openai"},
         ]
         return web.json_response({"object": "list", "data": models})
