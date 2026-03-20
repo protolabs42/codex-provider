@@ -17,7 +17,7 @@
             <label style="font-size:0.85em;">
                 Upstream API Base
                 <input type="text"
-                       x-model="$store.pluginSettings.settings.api_base"
+                       x-model="config.api_base"
                        placeholder="https://api.openai.com"
                        style="width:100%; padding:6px 8px; border-radius:6px; background:var(--bg-primary, #0d0d1a); border:1px solid var(--border, #333); color:inherit; margin-top:4px; box-sizing:border-box;" />
                 <p style="font-size:0.7em; opacity:0.5; margin:4px 0 0 0;">
@@ -29,7 +29,7 @@
             <label style="font-size:0.85em;">
                 Local Proxy Port
                 <input type="number"
-                       x-model.number="$store.pluginSettings.settings.proxy_port"
+                       x-model.number="config.proxy_port"
                        placeholder="8400"
                        style="width:100%; padding:6px 8px; border-radius:6px; background:var(--bg-primary, #0d0d1a); border:1px solid var(--border, #333); color:inherit; margin-top:4px; box-sizing:border-box;" />
             </label>
@@ -38,7 +38,7 @@
             <label style="font-size:0.85em;">
                 Default Chat Model
                 <input type="text"
-                       x-model="$store.pluginSettings.settings.chat_model"
+                       x-model="config.chat_model"
                        placeholder="gpt-5.3-codex"
                        style="width:100%; padding:6px 8px; border-radius:6px; background:var(--bg-primary, #0d0d1a); border:1px solid var(--border, #333); color:inherit; margin-top:4px; box-sizing:border-box;" />
             </label>
@@ -46,7 +46,7 @@
             <!-- Auto Configure -->
             <label style="font-size:0.85em; display:flex; align-items:center; gap:8px;">
                 <input type="checkbox"
-                       x-model="$store.pluginSettings.settings.auto_configure" />
+                       x-model="config.auto_configure" />
                 Auto-start proxy on agent initialization
             </label>
 

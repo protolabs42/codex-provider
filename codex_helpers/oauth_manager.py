@@ -20,7 +20,7 @@ from pathlib import Path
 
 import aiohttp
 
-logger = logging.getLogger("codex-provider.oauth")
+logger = logging.getLogger("codex_provider.oauth")
 
 # Mimic Codex CLI User-Agent — Cloudflare blocks aiohttp's default UA on auth.openai.com
 _HEADERS = {"User-Agent": "codex-cli/1.0"}
